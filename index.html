@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dak’s Used Books</title>
+  <style>
+    /* --- base --- */
+    :root {
+      --accent: #6c63ff;
+      --danger: #ff4d4d;
+      --whatsapp: #25D366;
+      --card-w: 220px;
+      --card-h: 360px;
+    }
+    body{
+      font-family: Arial, sans-serif;
+      margin:0;
+      color:#333;
+      background:#f9f9f9;
+      
+
+    }
+
+    /* --- header / nav --- */
+    header{
+      background:#fff;
+      padding:18px 28px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      box-shadow:0 2px 8px rgba(0,0,0,0.06);
+    }
+    header h1{ margin:0; font-size:1.4rem; color:#444; }
+
+    /* --- navbar --- */
+nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  background-color: rgb(255, 255, 255, 0.90);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+
+
+
+    /* Cart icon area: cartCount is positioned relative to this element */
+    #cartIcon {
+      position: relative;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      cursor:pointer;
+      padding:8px 10px;
+      border-radius:8px;
+      transition:transform .22s ease;
+      background:transparent;
+      color:#444;
+      text-decoration:none;
+      user-select:none;
+    }
+
+    /* the red bubble */
+    #cartCount {
+      position: absolute;
+      top: -8px;
+      right: -6px;
+      background: var(--danger);
+      color:#fff;
+      border-radius:999px;
+      padding:3px 7px;
+      font-weight:700;
+      font-size:0.78rem;
+      line-height:1;
+      display:none; /* show when >0 */
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    }
+
+    /* bounce animation (applied by adding .bounce) */
+    @keyframes cartBounce {
+      0% { transform: scale(1); }
+      30% { transform: scale(1.28); }
+      60% { transform: scale(0.95); }
+      100% { transform: scale(1); }
+    }
+    #cartIcon.bounce {
+      animation: cartBounce 0.55s cubic-bezier(.2,.9,.2,1);
+    }
+
+    /* --- books grid (home) --- */
+    .books-container{
+      padding:30px;
+      display:grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap:18px;
+      max-width:1200px;
+      margin: 0 auto 40px;
+    }
+
+    .book-card{
+      background:#fff;
+      border-radius:12px;
+      overflow:hidden;
+      box-shadow:0 4px 12px rgba(0,0,0,0.06);
+      display:flex;
+      flex-direction:column;
+      cursor:pointer;
+      transition:transform .18s ease;
+      min-height: 360px;
+    }
+    .book-card:hover{ transform: translateY(-6px); }
+
+    .book-card img {
+  width: 100%;
+  height: auto;         /* let it scale naturally */
+  max-height: 220px;    /* optional limit so card isn’t huge */
+  object-fit: contain;  /* shows full image */
+  background: #ddd;
+}
+
+
+    .book-info {
+  flex: 1;         /* takes all space below image */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* ensures Remove button at bottom */
+  gap: 4px;
+}
+
+
+    .book-info h2{ margin:0; font-size:1.05rem; }
+    .book-info p{ margin:0; color:#666; font-size:0.9rem; }
+    .price{ font-weight:700; color:var(--accent); }
+
+    .quantity-section{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:6px; }
+    .quantity-section input{ width:56px; padding:6px; border-radius:6px; border:1px solid #ccc; }
+
+    .buy-btn{
+      margin-top:auto;
+      padding:10px;
+      border:none;
+      background:var(--accent);
+      color:#fff;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:700;
+      transition:transform .15s ease, filter .15s ease;
+    }
+    .buy-btn:hover{ transform:scale(1.04); filter:brightness(1.04); }
+
+    /* modal (cart) */
+    .modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:60; align-items:center; justify-content:center; }
+    .modal.open{ display:flex; }
+
+    .modal-content{
+      width:90%;
+      max-width:1100px;
+      background:#fff;
+      border-radius:12px;
+      padding:18px;
+      box-shadow:0 6px 30px rgba(0,0,0,0.12);
+      display:flex;
+      flex-direction:column;
+      max-height:85vh;
+    }
+
+    .modal-top{
+      display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px;
+    }
+    .modal-top h2{ margin:0; font-size:1.2rem; }
+
+/* make cart items scroll horizontally */
+.modal-body {
+  overflow-x: auto;   /* horizontal scroll */
+  overflow-y: hidden; /* hide vertical scroll */
+  padding: 10px 8px;
+}
+
+/* ---------- Fixed cart + home grid rules (use grid, not flex) ---------- */
+
+/* ensure predictable sizing */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Home books container (keeps desktop 5-up, tablet 3-up, mobile 2-up) */
+.books-container {
+  display: grid;
+  gap: 18px;
+  max-width: 1200px;
+  margin: 0 auto 40px;
+  grid-template-columns: repeat(5, 1fr); /* default desktop */
+}
+
+/* Cart grid uses fixed card width but grid layout so media queries work */
+.cart-grid {
+  display: grid;
+  gap: 18px;
+  justify-content: center;
+  grid-template-columns: repeat(5, var(--card-w)); /* desktop: 5 columns */
+}
+
+/* Force modal body to scroll vertically when many items */
+.modal-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-right: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Cards inside cart: let CSS control sizing — no inline width from JS */
+.cart-grid .book-card {
+  width: var(--card-w);
+  min-height: var(--card-h);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Responsive breakpoints */
+/* tablet */
+@media (max-width: 992px) {
+  .books-container { grid-template-columns: repeat(3, 1fr); }
+  .cart-grid { grid-template-columns: repeat(3, var(--card-w)); }
+}
+
+/* mobile: 2 cards per row (this is the magic rule for iPhone SE) */
+@media (max-width: 768px) {
+  .books-container { grid-template-columns: repeat(2, 1fr) !important; gap: 14px; }
+  .cart-grid { grid-template-columns: repeat(2, calc(var(--card-w) - 8px)) !important; justify-content:center; gap:12px; }
+  .book-card { width: 100%; max-width: 240px; }
+}
+
+/* tiny phones */
+@media (max-width: 420px) {
+  .books-container { grid-template-columns: repeat(2, 1fr) !important; }
+  .cart-grid { grid-template-columns: repeat(2, calc(var(--card-w) - 24px)) !important; }
+  .book-card { max-width: 180px; }
+}
+
+/* keep whatsapp sticky visible and not overlapping */
+.modal-footer { position: sticky; bottom: 0; background: linear-gradient(rgba(255,255,255,0.0), rgba(255,255,255,0.9)); padding-top:8px; }
+
+/* total + whatsapp area pinned at bottom */
+    .modal-footer {
+  display: block; /* remove flex, we want stacked layout */
+  padding: 0; 
+  margin: 0;
+}
+/* default: desktop/laptop view */
+#bookContainer,
+#cartItems {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  justify-content: center;
+}
+
+/* mobile view: 2 cards per row */
+@media (max-width: 768px) {
+  #bookContainer,
+  #cartItems {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  .book-card {
+    width: 100%;
+    height: auto;
+  }
+}
+
+#whatsappOrderBtn {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  background: var(--whatsapp);
+  color: #fff;
+  border: none;
+  padding: 16px 0;
+  font-weight: 700;
+  font-size: 1rem;
+  border-radius: 0; /* optional: flat edges for sticky bottom */
+  cursor: pointer;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.12);
+  z-index: 20;
+}
+
+
+
+    #totalAmount{ font-weight:800; font-size:1.05rem; color:#222; }
+
+    
+
+    #whatsappOrderBtn:hover{ filter:brightness(1.03); transform:translateY(-1px); }
+
+    .remove-btn{
+      background:var(--danger);
+      color:#fff;
+      border:none;
+      padding:8px 10px;
+      border-radius:8px;
+      cursor:pointer;
+      width:100%;
+      margin-top:8px;
+      font-weight:700;
+    }
+    .remove-btn:hover{ background:#e03b4c; }
+
+    .close-btn{
+      background:transparent;
+      border:none;
+      font-size:1.2rem;
+      cursor:pointer;
+      color:#666;
+    }
+
+    /* responsive for the cart grid columns */
+    @media (max-width: 992px){
+      .books-container { grid-template-columns: repeat(3, 1fr); }
+      .cart-grid { grid-template-columns: repeat(3, var(--card-w)); }
+    }
+    @media (max-width: 768px){
+      .books-container { grid-template-columns: repeat(2, 1fr); }
+      .cart-grid { grid-template-columns: repeat(3, var(--card-w)); } /* keep 3 on phones per your ask */
+    }
+    @media (max-width: 420px){
+      .books-container { grid-template-columns: repeat(1, 1fr); }
+      .cart-grid { grid-template-columns: repeat(2, var(--card-w)); } /* tiny phones -> 2 */
+    }
+
+    footer{
+      padding:18px; text-align:center; background:#fff; color:#666; margin-top:36px;
+    }
+    footer a{ color: inherit; text-decoration:none; font-weight:700; margin:0 8px; }
+
+   .modal-content {
+  width: 90%;
+  max-width: 800px; /* smaller on mobile, bigger on desktop */
+  background:#fff;
+  border-radius:12px;
+  padding:18px;
+  box-shadow:0 6px 30px rgba(0,0,0,0.12);
+  display:flex;
+  flex-direction:column;
+  max-height:85vh;
+  overflow-y:auto; /* scroll if content is tall */
+}
+
+#modalMedia video {
+  display: block;
+  margin: 12px auto;
+  width: 100%;
+  height: auto;       /* maintain aspect ratio */
+  max-height: 500px;  /* scales up on desktop nicely */
+  object-fit: contain; /* don’t crop video */
+  border-radius: 8px;
+}
+
+/* Responsive fix for smaller screens */
+@media (max-width: 600px) {
+  #booksContainer,
+  #cartItems {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    justify-items: center;
+    align-items: start;
+    overflow-y: auto;
+  }
+
+  .book-card {
+    width: 95%;
+    max-width: 180px;
+  }
+
+  #cartModal {
+    overflow-y: auto;
+  }
+}
+
+/* MOBILE: cart 1 card per row */
+@media (max-width: 768px) {
+  #cartItems,
+  .cart-grid {
+    grid-template-columns: 1fr !important; /* force one card per row */
+    gap: 12px;
+    justify-items: center;
+    overflow-y: auto; /* vertical scroll */
+  }
+
+  .cart-grid .book-card,
+  #cartItems .book-card {
+    width: 100%;
+    max-width: 360px; /* adjust if needed */
+  }
+}
+
+.discount-strip {
+  width: 100%;
+  background: #ff0000;
+  color: white;
+  padding: 0; /* no extra height */
+  overflow: hidden;
+  position: relative;
+  white-space: nowrap;
+  font-weight: bold;
+  font-size: 1.1rem;
+  line-height: 1; /* matches font height exactly */
+  border-top: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+}
+
+.discount-strip p {
+  display: inline-block;
+  margin: 0;
+  animation: scrollText 10s linear infinite;
+}
+
+@keyframes scrollText {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.special-card {
+  background:#f2ffb1;
+      border-radius:12px;
+      overflow:hidden;
+      box-shadow:0 4px 12px rgba(0,0,0,0.06);
+      display:flex;
+      flex-direction:column;
+      cursor:pointer;
+      transition:transform .18s ease;
+      min-height: 360px;
+}
+
+.special-card img {
+  width: 100%;
+  height: auto;         /* let it scale naturally */
+  max-height: 220px;    /* optional limit so card isn’t huge */
+  object-fit: contain;  /* shows full image */
+  background: #e5ff62;
+}
+
+.special-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 15px 35px rgba(255, 215, 0, 0.5);
+}
+
+.offer-labal {
+  position: relative;
+  top: 15px;
+  background: linear-gradient(135deg, #ffea00, #ffd000);
+  color: #000;
+  font-weight: 800;
+  padding: 6px 18px;
+  font-size: 0.85rem;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(255, 210, 0, 0.6);
+  letter-spacing: 0.5px;
+  z-index: 10;
+  pointer-events: none;
+  border: 1.5px solid #fff6a2;
+  text-transform: uppercase;
+}
+
+
+
+
+
+.price-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+  margin: 5px 0;
+}
+
+.price-label {
+  font-size: 0.95rem;
+  color: #444;
+}
+
+.price-label.highlight {
+  font-weight: 700;
+  color: #ff4d4d;
+}
+
+.old-price {
+  position: relative;
+  color: #888;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.old-price::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ff4d4d, transparent);
+  transform: translateY(-50%);
+  opacity: 0.9;
+}
+
+.price {
+  color: #ff4d4d;
+  font-size: 1.2rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.special-buy-btn {
+  margin-top:auto;
+      padding:10px;
+      border:none;
+      background-color: #ffcc00;
+      color:#000000;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:700;
+      transition:transform .15s ease, filter .15s ease;
+}
+
+.buy-btn:hover {
+  transform:scale(1.04); filter:brightness(1.04);
+}
+
+
+  </style>
+</head>
+<body>
+
+  <header>
+    <nav>
+      <h1>Daksh’s Used Books</h1>
+      <!-- cartCount must be inside same clickable area to be positioned correctly -->
+      <a id="cartIcon" href="#" aria-label="Open cart">🛒 Cart
+        <span id="cartCount">0</span>
+      </a>
+    </nav>
+  </header>
+
+  <br>
+  
+<div class="discount-strip">
+  <p>JEE Main/Advanced & NEET Material at Half Price (50% OFF)</p>
+</div>
+
+
+  <!-- Home book grid (2 example cards; add 10 as needed) -->
+  <section class="books-container" aria-label="Books">
+    <div class="book-card special-card">
+  <div class="offer-labal"> SPECIAL OFFER </div>
+  <img src="./All 11.jpg" alt="All 11 Books">
+  <div class="book-info">
+    <h2>All 11 Books</h2>
+
+    <div class="price-wrapper">
+      <span class="price-label">Actual Price:</span>
+      <span class="old-price">₹6000</span>
+    </div>
+
+    <div class="price-wrapper">
+      <span class="price-label highlight">Our Price:</span>
+      <span class="price">₹2499</span>
+    </div>
+
+    <!-- no qty input in special card, so pass 1 directly -->
+<button class="special-buy-btn"
+  onclick="event.stopPropagation(); addToCart('All 11 Books','Author 1',2499,1, 'All 11.jpg')">
+  Grab Now
+</button>
+
+  </div>
+</div>
+
+<div class="book-card special-card">
+<div class="offer-labal"> SPECIAL OFFER </div>
+<img src="./PW.jpg" alt="All 11 Books">
+<div class="book-info">
+<h2>PHYSICS WALLAH Aspire for JEE (Math/Chem/Phy) </h2>
+
+<div class="price-wrapper">
+  <span class="price-label">Actual Price:</span>
+  <span class="old-price">₹1400</span>
+</div>
+
+<div class="price-wrapper">
+  <span class="price-label highlight">Our Price:</span>
+  <span class="price">₹599</span>
+</div>
+
+<button class="special-buy-btn"
+  onclick="event.stopPropagation(); addToCart('PHYSICS WALLAH Aspire for JEE (Math/Chem/Phy)','Author 1',599,1,'PW.jpg')">
+  Grab Now
+</button>
+
+</div>
+</div>
+
+    <div class="book-card" onclick="openModal('HC Verma - Concept of Physics (Part-1)','hcv1.mp4')">
+      <img src="./HC Verma - Concept of Physics (Part-1).jpg" alt="HC Verma - Concept of Physics (Part-1)">
+      <div class="book-info">
+        <h2>HC Verma - Concept of Physics (Part-1)</h2>
+        <p style="color: red;">Online Price - ₹440</p>
+        <p style="font-size: large; color: #0c0c0c;" class="price">₹220</p>
+        <div class="quantity-section" onclick="event.stopPropagation()">
+          <span>Qty:</span>
+          <input type="number" min="1" max="2" value="1" />
+          <span>2 available</span>
+        </div>
+        <button class="buy-btn" 
+    onclick="event.stopPropagation(); 
+    addToCart('HC Verma - Concept of Physics (Part-1)','Author 1',220,this.previousElementSibling.querySelector('input'), 'HC Verma - Concept of Physics (Part-1).jpg')">
+    Add to Cart
+    </button>
+      </div>
+    </div>
+
+    <div class="book-card" onclick="openModal('HC Verma - Concept of Physics (Part-2)','hcv2.mp4')">
+      <img src="./HC Verma - Concept of Physics (Part-2).jpg" alt="HC Verma - Concept of Physics (Part-2)">
+      <div class="book-info">
+        <h2>HC Verma - Concept of Physics (Part-2)</h2>
+        <p style="color: red;">Online Price - ₹440</p>
+        <p style="font-size: large; color: #0c0c0c;" class="price">₹220</p>
+        <div class="quantity-section" onclick="event.stopPropagation()">
+          <span>Qty:</span>
+          <input type="number" min="1" max="2" value="1" />
+          <span>2 available</span>
+        </div>
+        <button class="buy-btn" 
+    onclick="event.stopPropagation(); 
+    addToCart('HC Verma - Concept of Physics (Part-2)','Author 1',220,this.previousElementSibling.querySelector('input'), 'HC Verma - Concept of Physics (Part-2).jpg')">
+    Add to Cart
+    </button>
+      </div>
+    </div>
+    
+    <div class="book-card" onclick="openModal('M.S. Chouhan - Organic Chemistry (Jee)','org.che.jee.q.mp4')">
+      <img src="./M.S. Chouhan - Organic Chemistry (Jee).jpg" alt="M.S. Chouhan - Organic Chemistry (Jee)">
+      <div class="book-info">
+        <h2>M.S. Chouhan - Organic Chemistry (Jee)</h2>
+        <p style="color: red;">Online Price - ₹700</p>
+        <p style="font-size: large; color: #0c0c0c;" class="price">₹350</p>
+        <div class="quantity-section" onclick="event.stopPropagation()">
+          <span>Qty:</span>
+          <input type="number" min="1" max="2" value="1" />
+          <span>2 available</span>
+        </div>
+        <button class="buy-btn" 
+    onclick="event.stopPropagation(); 
+    addToCart('M.S. Chouhan - Organic Chemistry (Jee)','Author 1',350,this.previousElementSibling.querySelector('input'), 'M.S. Chouhan - Organic Chemistry (Jee).jpg')">
+    Add to Cart
+    </button>
+      </div>
+    </div>
+    
+    <div class="book-card" onclick="openModal('V.K. Jaiswal - Inorganic Chemisrty (Jee)','inorg.vkjaiswal.mp4')">
+      <img src="./V.K. Jaiswal - Inorganic Chemisrty (Jee).jpg" alt="V.K. Jaiswal - Inorganic Chemisrty (Jee)">
+      <div class="book-info">
+        <h2>V.K. Jaiswal - Inorganic Chemisrty (Jee)</h2>
+        <p style="color: red;">Online Price - ₹600</p>
+        <p style="font-size: large; color: #0c0c0c;" class="price">₹300</p>
+        <div class="quantity-section" onclick="event.stopPropagation()">
+          <span>Qty:</span>
+          <input type="number" min="1" max="2" value="1" />
+          <span>2 available</span>
+        </div>
+        <button class="buy-btn" 
+    onclick="event.stopPropagation(); 
+    addToCart('V.K. Jaiswal - Inorganic Chemisrty (Jee)','Author 1',300,this.previousElementSibling.querySelector('input'), 'V.K. Jaiswal - Inorganic Chemisrty (Jee).jpg')">
+    Add to Cart
+    </button>
+      </div>
+    </div>
+    
+    <div class="book-card" onclick="openModal('V.K. Jaiswal - Inorganic Chemisrty (Neet)','inorg.vkjaiswal.neet.mp4')">
+      <img src="./V.K. Jaiswal - Inorganic Chemisrty (Neet).jpg" alt="V.K. Jaiswal - Inorganic Chemisrty (Jee)">
+      <div class="book-info">
+        <h2>V.K. Jaiswal - Inorganic Chemisrty (Jee)</h2>
+        <p style="color: red;">Online Price - ₹460</p>
+        <p style="font-size: large; color: #0c0c0c;" class="price">₹230</p>
+        <div class="quantity-section" onclick="event.stopPropagation()">
+          <span>Qty:</span>
+          <input type="number" min="1" max="2" value="1" />
+          <span>2 available</span>
+        </div>
+        <button class="buy-btn" 
+        onclick="event.stopPropagation(); 
+    addToCart('V.K. Jaiswal - Inorganic Chemisrty (Neet)','Author 1',230,this.previousElementSibling.querySelector('input'), 'V.K. Jaiswal - Inorganic Chemisrty (Neet).jpg')">
+    Add to Cart
+  </button>
+</div>
+</div>
+
+<div class="book-card" onclick="openModal('MTG Jee Main question bank - Maths','mtg.jee.maths.mp4')">
+  <img src="./MTG Jee Main question bank - Maths.jpg" alt="V.K. Jaiswal - Inorganic Chemisrty (Jee)">
+  <div class="book-info">
+    <h2>MTG Jee Main question bank - Maths</h2>
+    <p style="color: red;">Online Price - ₹600</p>
+    <p style="font-size: large; color: #0c0c0c;" class="price">₹300</p>
+    <div class="quantity-section" onclick="event.stopPropagation()">
+      <span>Qty:</span>
+      <input type="number" min="1" max="2" value="1" />
+      <span>2 available</span>
+    </div>
+    <button class="buy-btn" 
+onclick="event.stopPropagation(); 
+addToCart('MTG Jee Main question bank - Maths','Author 1',300,this.previousElementSibling.querySelector('input'), 'MTG Jee Main question bank - Maths.jpg')">
+Add to Cart
+</button>
+  </div>
+</div>
+
+<div class="book-card" onclick="openModal('MTG Jee Main question bank - Chemistry','mtg.jee.chem.mp4')">
+  <img src="./MTG Jee Main question bank - Chemistry.jpg" alt="V.K. Jaiswal - Inorganic Chemisrty (Jee)">
+      <div class="book-info">
+        <h2>MTG Jee Main question bank - Chemistry</h2>
+        <p style="color: red;">Online Price - ₹600</p>
+        <p style="font-size: large; color: #0c0c0c;" class="price">₹300</p>
+        <div class="quantity-section" onclick="event.stopPropagation()">
+          <span>Qty:</span>
+          <input type="number" min="1" max="2" value="1" />
+          <span>2 available</span>
+        </div>
+        <button class="buy-btn" 
+    onclick="event.stopPropagation(); 
+    addToCart('MTG Jee Main question bank - Chemistry','Author 1',300,this.previousElementSibling.querySelector('input'), 'MTG Jee Main question bank - Chemistry.jpg')">
+    Add to Cart
+    </button>
+      </div>
+    </div>
+   
+    <div class="book-card" onclick="openModal('MTG Jee Main question bank - Physics','mtg.jee.phy.mp4')">
+      <img src="./MTG Jee Main question bank - Physics.jpg" alt="V.K. Jaiswal - Inorganic Chemisrty (Jee)">
+      <div class="book-info">
+        <h2>MTG Jee Main question bank - Physics</h2>
+        <p style="color: red;">Online Price - ₹600</p>
+        <p style="font-size: large; color: #0c0c0c;" class="price">₹300</p>
+        <div class="quantity-section" onclick="event.stopPropagation()">
+          <span>Qty:</span>
+          <input type="number" min="1" max="2" value="1" />
+          <span>2 available</span>
+        </div>
+        <button class="buy-btn" 
+    onclick="event.stopPropagation(); 
+    addToCart('MTG Jee Main question bank - Physics','Author 1',300,this.previousElementSibling.querySelector('input'), 'MTG Jee Main question bank - Physics.jpg')">
+    Add to Cart
+    </button>
+      </div>
+    </div>
+    
+    <div class="book-card" onclick="openModal('MTG Jee Advanced question bank - Maths','mtg.jee.maths.adv.mp4')">
+      <img src="./MTG Jee Advanced question bank - Maths.jpg" alt="V.K. Jaiswal - Inorganic Chemisrty (Jee)">
+      <div class="book-info">
+        <h2>MTG Jee Advanced question bank - Maths</h2>
+        <p style="color: red;">Online Price - ₹500</p>
+        <p style="font-size: large; color: #0c0c0c;" class="price">₹250</p>
+        <div class="quantity-section" onclick="event.stopPropagation()">
+          <span>Qty:</span>
+          <input type="number" min="1" max="2" value="1" />
+          <span>2 available</span>
+        </div>
+        <button class="buy-btn" 
+    onclick="event.stopPropagation(); 
+    addToCart('MTG Jee Advanced question bank - Maths','Author 1',250,this.previousElementSibling.querySelector('input'), 'MTG Jee Advanced question bank - Maths.jpg')">
+    Add to Cart
+    </button>
+      </div>
+    </div>
+    
+    <div class="book-card" onclick="openModal('MTG Jee Advanced question bank - Chemistry','mtg.jee.chem.adv.mp4')">
+      <img src="./MTG Jee Advanced question bank - Chemistry.jpg" alt="V.K. Jaiswal - Inorganic Chemisrty (Jee)">
+      <div class="book-info">
+        <h2>MTG Jee Advanced question bank - Chemistry</h2>
+        <p style="color: red;">Online Price - ₹500</p>
+        <p style="font-size: large; color: #0c0c0c;" class="price">₹250</p>
+        <div class="quantity-section" onclick="event.stopPropagation()">
+          <span>Qty:</span>
+          <input type="number" min="1" max="2" value="1" />
+          <span>2 available</span>
+        </div>
+        <button class="buy-btn" 
+    onclick="event.stopPropagation(); 
+    addToCart('MTG Jee Advanced question bank - Chemistry','Author 1',250,this.previousElementSibling.querySelector('input'), 'MTG Jee Advanced question bank - Chemistry.jpg')">
+    Add to Cart
+    </button>
+      </div>
+    </div>
+    
+    <div class="book-card" onclick="openModal('MTG Jee Advanced question bank - Physics','mtg.jee.phy.adv.mp4')">
+      <img src="./MTG Jee Advanced question bank - Physics.jpg" alt="V.K. Jaiswal - Inorganic Chemisrty (Jee)">
+      <div class="book-info">
+        <h2>MTG Jee Advanced question bank - Physics</h2>
+        <p style="color: red;">Online Price - ₹500</p>
+        <p style="font-size: large; color: #0c0c0c;" class="price">₹250</p>
+        <div class="quantity-section" onclick="event.stopPropagation()">
+          <span>Qty:</span>
+          <input type="number" min="1" max="2" value="1" />
+          <span>2 available</span>
+        </div>
+        <button class="buy-btn" 
+    onclick="event.stopPropagation(); 
+    addToCart('MTG Jee Advanced question bank - Physics','Author 1',250,this.previousElementSibling.querySelector('input'), 'MTG Jee Advanced question bank - Physics.jpg')">
+    Add to Cart
+    </button>
+      </div>
+    </div>
+
+
+</section>
+
+  <!-- CART MODAL -->
+  <div id="cartModal" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <div class="modal-top">
+        <h2>Your Cart</h2>
+        <div>
+          <button class="close-btn" onclick="closeCartModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body" id="cartItemsWrap">
+        <!-- grid inserted here -->
+        <div id="cartItems" class="cart-grid"></div>
+      </div>
+
+      <div class="modal-footer">
+        <div id="totalAmount">Total: ₹0</div>
+        <div style="display:flex; gap:12px; align-items:center;">
+          <button id="whatsappOrderBtn">WhatsApp to order</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOOK DETAIL MODAL (simple) -->
+  <div id="bookModal" class="modal" aria-hidden="true">
+    <div class="modal-content">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2 id="modalTitle">Title</h2>
+        <button class="close-btn" onclick="closeModal()">✕</button>
+      </div>
+      <div id="modalMedia"></div>
+      <p id="modalAuthor"></p>
+      <p id="modalPrice"></p>
+      <p id="modalCondition"></p>
+      <p id="modalDesc"></p>
+    </div>
+  </div>
+
+  <footer>
+    <a href="https://wa.me/919023911192" target="_blank">9023911192</a> |
+    <a href="https://instagram.com/itwasneverdaksh" target="_blank">@itwasneverdaksh</a>
+  </footer>
+
+  <script>
+
+    let books = [
+  { title: "HC Verma - Concept of Physics (Part-1)", price: 220, media: "HC Verma - Concept of Physics (Part-1).jpg" },
+  { title: "Book 2", price: 300, media: "placeholder.jpg" },
+  // add all other books here
+];
+
+    /* --- data --- */
+    let cart = [];
+
+    /* --- helpers --- */
+    function formatRs(x){ return '₹' + x; }
+
+    /* --- add to cart --- */
+    function addToCart(bookTitle, author, price, qtyInput, media){
+  const qty = parseInt(qtyInput.value) || 1;
+  const existing = cart.find(b => b.title === bookTitle);
+  if(existing){
+    existing.qty = Math.min(existing.qty + qty, 2);
+  } else {
+    cart.push({ title: bookTitle, author, price, qty, media }); // <- add media here
+  }
+  updateCartCountAndAnimate();
+}
+
+
+    /* update count bubble and animate cart */
+    function updateCartCountAndAnimate(){
+      const total = cart.reduce((s,b)=>s+b.qty,0);
+      const cartCount = document.getElementById('cartCount');
+      cartCount.innerText = total;
+      cartCount.style.display = total > 0 ? 'inline-block' : 'none';
+
+      const cartIcon = document.getElementById('cartIcon');
+      // apply bounce class, then remove
+      cartIcon.classList.remove('bounce');
+      // force reflow to restart animation reliably:
+      void cartIcon.offsetWidth;
+      cartIcon.classList.add('bounce');
+      setTimeout(()=> cartIcon.classList.remove('bounce'), 650);
+    }
+
+    /* open cart modal */
+    document.getElementById('cartIcon').addEventListener('click', function(e){
+      e.preventDefault();
+      updateCartModal();
+      const modal = document.getElementById('cartModal');
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden','false');
+    });
+
+    function closeCartModal(){
+      const modal = document.getElementById('cartModal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden','true');
+    }
+
+    /* open book detail */
+    function openModal(title, media){
+  document.getElementById('modalTitle').innerText = title;
+  
+  const mediaWrap = document.getElementById('modalMedia');
+  mediaWrap.innerHTML = '';
+  if(media && media.includes('.mp4')){
+    mediaWrap.innerHTML = `
+      <video autoplay muted playsinline controls style="width:100%; max-height:400px; border-radius:8px;">
+        <source src="${media}" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    `;
+  }
+
+  // hide all other info
+  document.getElementById('modalAuthor').innerText = '';
+  document.getElementById('modalPrice').innerText = '';
+  document.getElementById('modalCondition').innerText = '';
+  document.getElementById('modalDesc').innerText = '';
+
+  const m = document.getElementById('bookModal');
+  m.classList.add('open');
+  m.setAttribute('aria-hidden','false');
+}
+
+
+    function closeModal(){
+      const m = document.getElementById('bookModal');
+      m.classList.remove('open');
+      m.setAttribute('aria-hidden','true');
+    }
+
+    /* --- update cart modal contents --- */
+    function updateCartModal(){
+  const container = document.getElementById('cartItems');
+  // ensure class present so CSS grid rules apply
+  container.classList.add('cart-grid');
+  container.innerHTML = '';
+
+  if(cart.length === 0){
+    container.innerHTML = '<p>Your cart is empty.</p>';
+    document.getElementById('totalAmount').innerText = 'Total: ₹0';
+    document.getElementById('whatsappOrderBtn').style.display = 'none';
+    return;
+  }
+  document.getElementById('whatsappOrderBtn').style.display = 'inline-block';
+
+  // Build cards — DO NOT set inline widths or force layout from JS
+  cart.forEach((book, index) => {
+    const bookTotalPrice = book.price * book.qty;
+
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.innerHTML = `
+      <img src="${book.media || 'placeholder.jpg'}" alt="${book.title}">
+      <div class="book-info">
+        <h2>${book.title}</h2>
+        <p style="margin-top:6px;">Price: ${formatRs(bookTotalPrice)}</p>
+        <p>Quantity: ${book.qty}</p>
+        <button class="remove-btn">Remove Item</button>
+      </div>
+    `;
+
+    // remove handler
+    card.querySelector('.remove-btn').addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      cart.splice(index, 1);
+      updateCartModal();
+      updateCartCountAndAnimate();
+    });
+
+    container.appendChild(card);
+  });
+
+  // compute total
+  const totalAmount = cart.reduce((s,b)=> s + b.price*b.qty, 0);
+  document.getElementById('totalAmount').innerText = 'Total: ' + formatRs(totalAmount);
+}
+
+    /* whatsapp handler - append total price too */
+    document.getElementById('whatsappOrderBtn').addEventListener('click', function(){
+      if(cart.length === 0) return;
+      const phoneNumber = '919023911192'; // +91 9023911192
+      let message = 'Hello, I want to order these books:%0A';
+      cart.forEach(b => {
+        message += `- ${b.title} x${b.qty}%0A`;
+      });
+      const totalAmount = cart.reduce((s,b)=> s + b.qty*b.price, 0);
+      message += `%0ATotal Price: ₹${totalAmount}`;
+      const url = `https://wa.me/${phoneNumber}?text=${message}`;
+      window.open(url,'_blank');
+    });
+
+    /* close modal by clicking backdrop */
+    window.addEventListener('click', function(e){
+      const cartModal = document.getElementById('cartModal');
+      const bookModal = document.getElementById('bookModal');
+      if(e.target === cartModal) closeCartModal();
+      if(e.target === bookModal) closeModal();
+    });
+
+    // init - nothing in cart
+    (function init(){
+      document.getElementById('cartCount').style.display = 'none';
+    })();
+
+  </script>
+</body>
+</html>
